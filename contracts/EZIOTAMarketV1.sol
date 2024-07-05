@@ -19,7 +19,7 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
         Open,
         Close
     }
-
+    //HERE
     address public immutable FUEL;
 
     uint256 public constant TOTAL_MAX_FEE = 3000; 
