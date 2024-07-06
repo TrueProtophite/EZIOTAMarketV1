@@ -19,7 +19,7 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
         Open,
         Close
     }
-    //HERE
+
     address public immutable FUEL;
 
     uint256 public constant TOTAL_MAX_FEE = 3000; 
@@ -31,6 +31,8 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
     uint256 public maxAskPrice; 
 
     uint256 public fuelRate; 
+
+	uint256 public pendingRewardsTotal;
 
     mapping(address => uint256) public pendingRoyalties; 
     mapping(address => uint256) public pendingRewards;
@@ -68,7 +70,7 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
     event NewFUELRate(uint256 fuelRate);
     event RoyaltyClaim(address indexed claimer, uint256 amount);
     event RewardsClaim(address indexed claimer, uint256 amount);
-    event BuyExecuted(address indexed collection, uint256 indexed tokenId, address indexed seller, address buyer, uint256 askPrice, uint256 netPrice);
+    event Trade(address indexed collection, uint256 indexed tokenId, address indexed seller, address buyer, uint256 askPrice, uint256 netPrice);
 
     uint256 constant DECIMALS = 10;
 
@@ -91,6 +93,15 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
 
         fuelRate = _fuelRate;
     }
+
+	function setTreasury(address newTreasury) external onlyOwner {
+		require(newTreasury != address(0), "Address 0x00");
+		treasuryAddress = newTreasury;
+	}
+
+	function withdrawFuel() external onlyOwner {
+		IERC20(FUEL).transfer(adminAddress, IERC20(FUEL).balanceOf(address(this)) - pendingRewardsTotal);
+	}	
 
 	/**
 	* @notice Toggle fee payable in fuel
@@ -115,30 +126,31 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
 
         (uint256 netPrice, uint256 tradingFee, uint256 creatorFee, uint256 tradeReward) = _calculateNFTDistribution(_collection, msg.value);
 
+		uint256 treasuryShare = 0;
         if(feesWithFuel[askOrder.seller]){
-			uint256 reduction = tradingFee * 25 ** (10 * 2) / 100 ** (10 * 2);
-			tradingFee -= reduction;
-			netPrice += reduction;
-			IERC20(FUEL).transferFrom(askOrder.seller, treasuryAddress, tradingFee / fuelRate * DECIMALS ** 6);
+			uint256 fuelAmount = tradingFee - (tradingFee * (20 * (10 ** 2))) / (100 * (10 ** 2));
+			netPrice += tradingFee;
+			IERC20(FUEL).transferFrom(askOrder.seller, treasuryAddress, fuelAmount / fuelRate * DECIMALS ** 6);
  		}
+		
+		if (tradeReward > 0){
+			uint256 fuelAmount = tradeReward / fuelRate * DECIMALS ** 6;
+			pendingRewards[msg.sender] += fuelAmount;
+			pendingRewardsTotal += fuelAmount;
+			treasuryShare += tradeReward;
+		}
+
+		pendingRoyalties[_collections[_collection].creatorAddress] += creatorFee;
+        pendingRoyalties[treasuryAddress] += treasuryShare;
 
         _tokenIdsOfSellerForCollection[askOrder.seller][_collection].remove(_tokenId);
         delete _askDetails[_collection][_tokenId];
         _askTokenIds[_collection].remove(_tokenId);
 
 		payable(askOrder.seller).transfer(netPrice);
-
-		pendingRoyalties[_collections[_collection].creatorAddress] += creatorFee;
-		if(tradeReward > 0){
-  			pendingRewards[msg.sender] += (tradeReward / fuelRate * DECIMALS**6);
-			tradingFee += tradeReward;
-		}
-
-        pendingRoyalties[treasuryAddress] += tradingFee;
-
         IERC721(_collection).safeTransferFrom(address(this), msg.sender, _tokenId);
 
-        emit BuyExecuted(_collection, _tokenId, askOrder.seller, msg.sender, msg.value, netPrice);
+        emit Trade(_collection, _tokenId, askOrder.seller, msg.sender, msg.value, netPrice);
     }
 
     /**
@@ -173,6 +185,7 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
     function claimRewards() external nonReentrant {
         IERC20(FUEL).transfer(msg.sender, pendingRewards[msg.sender]);
         emit RewardsClaim(msg.sender, pendingRewards[msg.sender]);
+		pendingRewardsTotal -= pendingRewards[msg.sender];
         pendingRewards[msg.sender] = 0;
     }
 
