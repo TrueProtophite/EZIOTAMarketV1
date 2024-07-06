@@ -94,7 +94,7 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
         fuelRate = _fuelRate;
     }
 
-    function setTreasury(address newTreasury) external onlyOwner {
+	function setTreasury(address newTreasury) external onlyOwner {
 		require(newTreasury != address(0), "Address 0x00");
 		treasuryAddress = newTreasury;
 	}
