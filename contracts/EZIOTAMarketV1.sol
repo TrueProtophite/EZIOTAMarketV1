@@ -127,10 +127,12 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
         (uint256 netPrice, uint256 tradingFee, uint256 creatorFee, uint256 tradeReward) = _calculateNFTDistribution(_collection, msg.value);
 
         uint256 treasuryShare = 0;
-        if(feesWithFuel[askOrder.seller] && IERC20(FUEL).){
-            uint256 fuelAmount = tradingFee - (tradingFee * (20 * (10 ** 2))) / (100 * (10 ** 2));
-            netPrice += tradingFee;
-            IERC20(FUEL).transferFrom(askOrder.seller, treasuryAddress, fuelAmount / fuelRate * DECIMALS ** 6);
+        if(feesWithFuel[askOrder.seller]){
+            uint256 fuelAmount = (tradingFee - (tradingFee * (20 * (10 ** 2))) / (100 * (10 ** 2))) / fuelRate * DECIMALS ** 6;
+            if(IERC20(FUEL).balanceOf(askOrder.seller) >= fuelAmount && IERC20(FUEL).allowance(askOrder.seller, address(this)) >= fuelAmount){
+                netPrice += tradingFee;
+                IERC20(FUEL).transferFrom(askOrder.seller, treasuryAddress, fuelAmount);
+            }
         }
 		
         if (tradeReward > 0){
