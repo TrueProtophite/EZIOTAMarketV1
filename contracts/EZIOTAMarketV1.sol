@@ -32,7 +32,7 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
 
     uint256 public fuelRate; 
 
-	uint256 public pendingRewardsTotal;
+    uint256 public pendingRewardsTotal;
 
     mapping(address => uint256) public pendingRoyalties; 
     mapping(address => uint256) public pendingRewards;
@@ -78,7 +78,7 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
      * @notice Constructor
      * @param _adminAddress: address of the admin
      * @param _treasuryAddress: address of the treasury
-	 * @param _FUELAddress: FUEL Address
+     * @param _FUELAddress: FUEL Address
      * @param _fuelRate: FUEL /SMR Rate
      */
     constructor(address _adminAddress, address _treasuryAddress, address _FUELAddress, uint256 _fuelRate) Ownable(_adminAddress) {
@@ -99,16 +99,16 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
         treasuryAddress = newTreasury;
     }
 
-	function withdrawFuel() external onlyOwner {
-		IERC20(FUEL).transfer(adminAddress, IERC20(FUEL).balanceOf(address(this)) - pendingRewardsTotal);
-	}	
+    function withdrawFuel() external onlyOwner {
+        IERC20(FUEL).transfer(adminAddress, IERC20(FUEL).balanceOf(address(this)) - pendingRewardsTotal);
+    }	
 
-	/**
-	* @notice Toggle fee payable in fuel
-	*/	
-	function payFeesWithFuel() external {
-		feesWithFuel[msg.sender] = !feesWithFuel[msg.sender];
-	}
+    /**
+     * @notice Toggle fee payable in fuel
+     */	
+    function payFeesWithFuel() external {
+        feesWithFuel[msg.sender] = !feesWithFuel[msg.sender];
+    }
 
     /**
      * @notice Buy nft with SMR by matching the price of an existing ask order
@@ -116,7 +116,7 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
      * @param _tokenId: tokenId of the NFT purchased
      */
     function buyNFTIOTA(address _collection, uint256 _tokenId) external payable nonReentrant {
-  		require(_collections[_collection].status == CollectionStatus.Open, "Collection: Not for trading");
+        require(_collections[_collection].status == CollectionStatus.Open, "Collection: Not for trading");
         require(_askTokenIds[_collection].contains(_tokenId), "Buy: Not for sale");
 
         Ask memory askOrder = _askDetails[_collection][_tokenId];
@@ -126,28 +126,28 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
 
         (uint256 netPrice, uint256 tradingFee, uint256 creatorFee, uint256 tradeReward) = _calculateNFTDistribution(_collection, msg.value);
 
-		uint256 treasuryShare = 0;
+        uint256 treasuryShare = 0;
         if(feesWithFuel[askOrder.seller]){
-			uint256 fuelAmount = tradingFee - (tradingFee * (20 * (10 ** 2))) / (100 * (10 ** 2));
-			netPrice += tradingFee;
-			IERC20(FUEL).transferFrom(askOrder.seller, treasuryAddress, fuelAmount / fuelRate * DECIMALS ** 6);
- 		}
+            uint256 fuelAmount = tradingFee - (tradingFee * (20 * (10 ** 2))) / (100 * (10 ** 2));
+            netPrice += tradingFee;
+            IERC20(FUEL).transferFrom(askOrder.seller, treasuryAddress, fuelAmount / fuelRate * DECIMALS ** 6);
+        }
 		
 		if (tradeReward > 0){
-			uint256 fuelAmount = tradeReward / fuelRate * DECIMALS ** 6;
-			pendingRewards[msg.sender] += fuelAmount;
-			pendingRewardsTotal += fuelAmount;
-			treasuryShare += tradeReward;
+            uint256 fuelAmount = tradeReward / fuelRate * DECIMALS ** 6;
+            pendingRewards[msg.sender] += fuelAmount;
+            pendingRewardsTotal += fuelAmount;
+            treasuryShare += tradeReward;
 		}
 
-		pendingRoyalties[_collections[_collection].creatorAddress] += creatorFee;
+        pendingRoyalties[_collections[_collection].creatorAddress] += creatorFee;
         pendingRoyalties[treasuryAddress] += treasuryShare;
 
         _tokenIdsOfSellerForCollection[askOrder.seller][_collection].remove(_tokenId);
         delete _askDetails[_collection][_tokenId];
         _askTokenIds[_collection].remove(_tokenId);
 
-		payable(askOrder.seller).transfer(netPrice);
+        payable(askOrder.seller).transfer(netPrice);
         IERC721(_collection).safeTransferFrom(address(this), msg.sender, _tokenId);
 
         emit Trade(_collection, _tokenId, askOrder.seller, msg.sender, msg.value, netPrice);
@@ -174,7 +174,7 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
      * @notice Claim pending revenue (treasury or creators)
      */
     function claimRoyalties() external nonReentrant {
-	    payable(msg.sender).transfer(pendingRoyalties[msg.sender]);	
+        payable(msg.sender).transfer(pendingRoyalties[msg.sender]);	
         emit RoyaltyClaim(msg.sender, pendingRoyalties[msg.sender]);
         pendingRoyalties[msg.sender] = 0;
     }
@@ -185,7 +185,7 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
     function claimRewards() external nonReentrant {
         IERC20(FUEL).transfer(msg.sender, pendingRewards[msg.sender]);
         emit RewardsClaim(msg.sender, pendingRewards[msg.sender]);
-		pendingRewardsTotal -= pendingRewards[msg.sender];
+        pendingRewardsTotal -= pendingRewards[msg.sender];
         pendingRewards[msg.sender] = 0;
     }
 
@@ -236,8 +236,8 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
     function addCollection(address _collection, address _creator, uint256 _tradingFee, uint256 _creatorFee, uint256 _tradeReward) external onlyOwner {
         require(!_collectionAddressSet.contains(_collection), "Operations: Collection already listed");
 
-		require(_tradeReward <= _creatorFee, "Trade reward exceeds creator fee");
-		require(_creator != address(0), "Address 0x00");
+        require(_tradeReward <= _creatorFee, "Trade reward exceeds creator fee");
+        require(_creator != address(0), "Address 0x00");
 
         require(_tradingFee + _creatorFee <= TOTAL_MAX_FEE, "Operations: Sum of fee must inferior to TOTAL_MAX_FEE");
 
@@ -282,8 +282,8 @@ contract EZIOTAMarketV1 is ERC721Holder, Ownable, ReentrancyGuard {
      */
     function modifyCollection(address _collection, address _creator, uint256 _tradingFee, uint256 _creatorFee, uint256 _tradeReward) external onlyOwner {
         require(_collectionAddressSet.contains(_collection), "Operations: Collection not listed");
-		require(_tradeReward <= _creatorFee, "Trade reward exceeds creator fee");
-		require(_creator != address(0), "Creator null address");
+        require(_tradeReward <= _creatorFee, "Trade reward exceeds creator fee");
+        require(_creator != address(0), "Creator null address");
         require(_tradingFee + _creatorFee <= TOTAL_MAX_FEE, "Operations: Sum of fee must inferior to TOTAL_MAX_FEE");
 
         _collections[_collection] = Collection({
